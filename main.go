@@ -1,0 +1,164 @@
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"sync"
+	"time"
+)
+
+const serverAddr string = "127.0.0.1:8081"
+
+type Note struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Text      string    `json:"text"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+var (
+	notes = make(map[string]Note)
+	mutex = &sync.Mutex{}
+)
+
+func generateID() string {
+	return fmt.Sprintf("%d", time.Now().UnixNano())
+}
+
+func createNote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var note Note
+	err := json.NewDecoder(r.Body).Decode(&note)
+	if err != nil {
+		http.Error(w, "failed to unmarshal", http.StatusBadRequest)
+		return
+	}
+
+	note.ID = generateID()
+	note.CreatedAt = time.Now()
+
+	mutex.Lock()
+	notes[note.ID] = note
+	mutex.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]string{"id": note.ID})
+}
+
+func updateNote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "missing id parameter", http.StatusBadRequest)
+		return
+	}
+
+	var updatedNote Note
+	err := json.NewDecoder(r.Body).Decode(&updatedNote)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	note, exists := notes[id]
+	if !exists {
+		mutex.Unlock()
+		http.Error(w, "note not found", http.StatusNotFound)
+		return
+	}
+
+	note.Name = updatedNote.Name
+	note.Text = updatedNote.Text
+	notes[id] = note
+	mutex.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(note)
+}
+
+func deleteNote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "path parameter not found", http.StatusNotFound)
+		return
+	}
+
+	mutex.Lock()
+	_, exists := notes[id]
+	if !exists {
+		mutex.Unlock()
+		http.Error(w, "note does not exists", http.StatusNotFound)
+		return
+	}
+	delete(notes, id)
+	mutex.Unlock()
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func getNote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "path parameter not found", http.StatusNotFound)
+		return
+	}
+
+	mutex.Lock()
+	note, exists := notes[id]
+	if !exists {
+		mutex.Unlock()
+		http.Error(w, "note does not exists", http.StatusNotFound)
+		return
+	}
+	mutex.Unlock()
+
+	w.Header().Set("Content-type", "application/json")
+	json.NewEncoder(w).Encode(note)
+}
+
+func main() {
+	http.HandleFunc("/note", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			createNote(w, r)
+		case http.MethodPut:
+			updateNote(w, r)
+		case http.MethodGet:
+			getNote(w, r)
+		case http.MethodDelete:
+			deleteNote(w, r)
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	slog.Info("starting server", "address", serverAddr)
+	err := http.ListenAndServe(serverAddr, nil)
+	if err != nil {
+		slog.Error("failed to start server", "address", serverAddr)
+		os.Exit(1)
+	}
+}

@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -50,7 +53,10 @@ func createNote(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"id": note.ID})
+	err = json.NewEncoder(w).Encode(map[string]string{"id": note.ID})
+	if err != nil {
+		http.Error(w, "failed to encode", http.StatusInternalServerError)
+	}
 }
 
 func updateNote(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +92,10 @@ func updateNote(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(note)
+	err = json.NewEncoder(w).Encode(note)
+	if err != nil {
+		http.Error(w, "failed to encode", http.StatusInternalServerError)
+	}
 }
 
 func deleteNote(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +145,10 @@ func getNote(w http.ResponseWriter, r *http.Request) {
 	mutex.Unlock()
 
 	w.Header().Set("Content-type", "application/json")
-	json.NewEncoder(w).Encode(note)
+	err := json.NewEncoder(w).Encode(note)
+	if err != nil {
+		http.Error(w, "failed to encode", http.StatusInternalServerError)
+	}
 }
 
 func main() {
@@ -156,9 +168,34 @@ func main() {
 	})
 
 	slog.Info("starting server", "address", serverAddr)
-	err := http.ListenAndServe(serverAddr, nil)
-	if err != nil {
-		slog.Error("failed to start server", "address", serverAddr)
-		os.Exit(1)
+
+	server := &http.Server{
+		Addr:         serverAddr,
+		Handler:      http.DefaultServeMux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
 	}
+
+	go func() {
+		slog.Info("server listening")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("failed to start server")
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-quit
+
+	slog.Info("shutting down server gracefully")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		slog.Error("failed to shutdown server properly", "error", err)
+	}
+
+	slog.Info("server stopped")
 }

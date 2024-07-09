@@ -7,7 +7,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-
   build:
     runs-on: ubuntu-latest
     steps:
@@ -17,6 +16,30 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.22'
+
+    - name: Install KubeArmor
+      run: |
+        curl -L -o kubearmor_1.3.8_linux-amd64.deb https://github.com/kubearmor/KubeArmor/releases/download/v1.3.8/kubearmor_1.3.8_linux-amd64.deb
+        sudo dpkg -i kubearmor_1.3.8_linux-amd64.deb
+        sudo apt-get install -f
+        sudo apt-get update
+        sudo apt-get install -y auditd
+        sudo service auditd start
+        sudo apt-get install -y apparmor-utils
+        sudo service apparmor start
+
+    - name: Verify KubeArmor Installation
+      run: karmor version
+
+    # - name: Start KubeArmor gRPC Service
+    #   run: nohup kubearmor &
+
+    - name: Log KubeArmor gRPC Service Output
+      run: |
+        nohup sh -c 'while true; do
+          karmor logs --logFilter=all --gRPC=:32767 --json >> kubearmor_logs.txt
+          sleep 1
+        done' &
 
     - name: Go mod tidy
       run: go mod tidy
@@ -34,3 +57,11 @@ jobs:
 
     - name: Build
       run: go build -v ./...
+
+    - name: Upload KubeArmor Logs
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: kubearmor-logs
+        path: kubearmor_logs.txt
+

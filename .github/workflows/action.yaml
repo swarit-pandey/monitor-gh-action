@@ -12,27 +12,22 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.22'
 
     - name: Install KubeArmor
       run: |
         curl -L -o kubearmor_1.3.8_linux-amd64.deb https://github.com/kubearmor/KubeArmor/releases/download/v1.3.8/kubearmor_1.3.8_linux-amd64.deb
         sudo dpkg -i kubearmor_1.3.8_linux-amd64.deb
         sudo apt-get install -f
-        sudo apt-get update
-        sudo apt-get install -y auditd
-        sudo service auditd start
-        sudo apt-get install -y apparmor-utils
-        sudo service apparmor start
 
     - name: Verify KubeArmor Installation
       run: karmor version
 
     # - name: Start KubeArmor gRPC Service
     #   run: nohup kubearmor &
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
 
     - name: Log KubeArmor gRPC Service Output
       run: |

@@ -1,62 +1,76 @@
 name: Go CI/CD
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
 
-
-    - name: Install KubeArmor
-      run: |
-        curl -L -o kubearmor_1.3.8_linux-amd64.deb https://github.com/kubearmor/KubeArmor/releases/download/v1.3.8/kubearmor_1.3.8_linux-amd64.deb
-        sudo dpkg -i kubearmor_1.3.8_linux-amd64.deb
-        sudo apt-get install -f
-
-    - name: Verify KubeArmor Installation
-      run: karmor version
-
-    # - name: Start KubeArmor gRPC Service
-    #   run: nohup kubearmor &
-    - name: Set up Go
-      uses: actions/setup-go@v4
+    - name: cimon sec
+      uses: cycodelabs/cimon-action@v0
       with:
-        go-version: '1.22'
-
-    - name: Log KubeArmor gRPC Service Output
-      run: |
-        nohup sh -c 'while true; do
-          karmor logs --logFilter=all --gRPC=:32767 --json >> kubearmor_logs.txt
-          sleep 1
-        done' &
+        report-process-tree: true
+        apply-fs-events: true
 
     - name: Go mod tidy
       run: go mod tidy
-
+    
     - name: Run vet
       run: go vet ./...
-
+    
     - name: Run tests
       run: go test -v ./...
-
+    
     - name: Run Gosec Security Scanner
       uses: securego/gosec@master
       with:
         args: ./...
-
+    
     - name: Build
       run: go build -v ./...
+    
+    - name: Run post-build activities
+      run: |
+        #!/bin/bash
 
-    - name: Upload KubeArmor Logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: kubearmor-logs
-        path: kubearmor_logs.txt
+        log_message() {
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+        }
 
+        perform_network_operations() {
+            log_message "Performing network operations"
+            curl -s https://api.github.com/zen > /dev/null
+            wget -q -O - http://example.com > /dev/null
+            ping -c 4 8.8.8.8 > /dev/null
+        }
+
+        perform_file_operations() {
+            log_message "Performing file operations"
+            mkdir -p test_dir
+            echo "Test content" > test_dir/test_file.txt
+            cp test_dir/test_file.txt test_dir/test_file_copy.txt
+            mv test_dir/test_file_copy.txt test_dir/test_file_moved.txt
+            rm test_dir/test_file_moved.txt
+            find / -name "*.go" -type f 2>/dev/null | head -n 5
+        }
+
+        perform_system_operations() {
+            log_message "Performing system operations"
+            ps aux | head -n 5
+            free -m
+            df -h
+            cat /proc/cpuinfo | grep "model name" | head -n 1
+        }
+
+        log_message "Starting post-build activities"
+
+        perform_network_operations
+        perform_file_operations
+        perform_system_operations
+
+        log_message "Post-build activities completed"
+      shell: bash

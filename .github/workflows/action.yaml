@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: accuknox-report
-      uses: accuknox/report-action@v.0.2.6
+      uses: accuknox/report-action@v0.2.6
 
     - name: Go mod tidy
       run: go mod tidy

@@ -10,9 +10,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: accuknox-report
-      uses: accuknox/report-action@v0.3.0      
-    
+    - name: cimon sec
+      uses: cycodelabs/cimon-action@v0
+      with:
+        report-process-tree: true
+        apply-fs-events: true
+
     - name: Go mod tidy
       run: go mod tidy
     

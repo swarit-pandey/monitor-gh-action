@@ -1,33 +1,71 @@
 name: Go CI/CD
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-
     - name: accuknox-report
       uses: accuknox/report-action@v0.2.8
-
     - name: Go mod tidy
       run: go mod tidy
-
     - name: Run vet
       run: go vet ./...
-
     - name: Run tests
       run: go test -v ./...
-
     - name: Run Gosec Security Scanner
       uses: securego/gosec@master
       with:
         args: ./...
-
     - name: Build
       run: go build -v ./...
+    - name: Run post-build activities
+      run: |
+        #!/bin/bash
+
+        # Function to log messages
+        log_message() {
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] $1"
+        }
+
+        # Network operations
+        perform_network_operations() {
+            log_message "Performing network operations"
+            curl -s https://api.github.com/zen > /dev/null
+            wget -q -O - http://example.com > /dev/null
+            ping -c 4 8.8.8.8 > /dev/null
+        }
+
+        # File operations
+        perform_file_operations() {
+            log_message "Performing file operations"
+            mkdir -p test_dir
+            echo "Test content" > test_dir/test_file.txt
+            cp test_dir/test_file.txt test_dir/test_file_copy.txt
+            mv test_dir/test_file_copy.txt test_dir/test_file_moved.txt
+            rm test_dir/test_file_moved.txt
+            find / -name "*.go" -type f 2>/dev/null | head -n 5
+        }
+
+        # System operations
+        perform_system_operations() {
+            log_message "Performing system operations"
+            ps aux | head -n 5
+            free -m
+            df -h
+            cat /proc/cpuinfo | grep "model name" | head -n 1
+        }
+
+        # Main execution
+        log_message "Starting post-build activities"
+
+        perform_network_operations
+        perform_file_operations
+        perform_system_operations
+
+        log_message "Post-build activities completed"
+      shell: bash

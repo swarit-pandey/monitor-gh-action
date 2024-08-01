@@ -10,8 +10,8 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Cimon by Cycode
-      uses: CycodeLabs/cimon-action@v0
+    - name: Accuknox Report
+      uses: accuknox/report-action@v0.3.1
     
     - name: Create and Run TCP Calls Script
       run: |

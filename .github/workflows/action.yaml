@@ -13,7 +13,7 @@ jobs:
     - name: Listen report 
       uses: listendev/action@v0.10.0
       with:
-        jwt: LSTN_API_KEY
+        jwt: ${{ secrets.LSTN_API_KEY }}
         ci: true
 
     - name: Build

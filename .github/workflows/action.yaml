@@ -10,8 +10,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Accuknox Report
-      uses: accuknox/report-action@v0.3.1
-    
+    - name: Listen report 
+      uses: listendev/action
+      with:
+        # remove this later
+        jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwcm9qZWN0X2lkIjoiNjZiYjAwY2EyZTY2NmU5ODk1OWU1NGM5Iiwid3JpdGU6ZGVwZW5kZW5jeWV2ZW50cyI6dHJ1ZSwid3JpdGU6cGlwZWxpbmVldmVudHMiOnRydWUsIndyaXRlOmRldGVjdGlvbmV2ZW50cyI6dHJ1ZSwiaWF0IjoxNzIzNTMxNDczfQ.dW-8rLZ8SMwNvjlzwrFVi5QHuTie5esrd9-a_V1UHSA
+        ci: true
+
     - name: Build
       run: go build -v ./...

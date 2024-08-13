@@ -14,7 +14,7 @@ jobs:
       uses: listendev/action@v0.10.0
       with:
         jwt: ${{ secrets.LSTN_API_KEY }}
-        ci: false
+        ci: true
 
     - name: Build
       run: go build -v ./...

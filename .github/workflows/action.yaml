@@ -10,11 +10,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     
-    - name: Listen report 
-      uses: listendev/action@v0.10.0
+    - name: Run AccuKnox CI/CD Scan
+      uses: accuknox/report-action@v0.3.1
       with:
-        jwt: ${{ secrets.LSTN_API_KEY }}
-        ci: true
+        kubearmor_version: '1.3.4'
 
     - name: Build
       run: go build -v ./...

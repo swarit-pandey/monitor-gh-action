@@ -13,7 +13,7 @@ jobs:
     - name: Run AccuKnox CI/CD Scan
       uses: accuknox/report-action@v0.3.2
       with: 
-        knoxctl_version: '0.6'
+        knoxctl_version: '0.6.1'
 
     - name: Build
       run: go build -v ./...

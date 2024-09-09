@@ -20,7 +20,7 @@ jobs:
         ls -R $GITHUB_WORKSPACE
 
     - name: Run AccuKnox CI/CD Scan
-      uses: accuknox/report-action@v0.3.3
+      uses: accuknox/report-action@v0.3.4
       with:
         knoxctl_version: '0.6.1'
 
